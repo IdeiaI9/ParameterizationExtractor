@@ -110,7 +110,10 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
         private static Regex varRgx = new Regex("(?:[^a-z0-9@]|(?<=['\"])s)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
         public string GetPKVarName()
         {
-            return varRgx.Replace(string.Format("@{0}_{1}_{2}", TableName, PkField?.FieldName, PK), string.Empty);
+            var nm = string.Format("@{0}_{1}_{2}", TableName, PkField?.FieldName, PK);
+            nm = nm.Replace("-", "Ngt");
+
+            return varRgx.Replace(nm, string.Empty);
         }
 
         public bool IsNumericPK { get { return PkField == null ? false : PkField.MetaData.FieldType.IsNumericType(); } }
@@ -177,6 +180,14 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
                 var date = Convert.ToDateTime(Value);
 
                 return string.Format("'{0}'", date.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+            }
+            else if (_metaData.FieldType == typeof(decimal)
+                || _metaData.FieldType == typeof(Double)
+                 || _metaData.FieldType == typeof(Single))
+            {
+                var num = Convert.ToString(Value, System.Globalization.CultureInfo.InvariantCulture);
+
+                return num;
             }
             else
                 str = PrepareValueForScript(Value.ToString());
