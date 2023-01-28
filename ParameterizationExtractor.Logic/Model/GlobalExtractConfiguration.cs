@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using ParameterizationExtractor.Logic.Model;
 
 namespace Quipu.ParameterizationExtractor.Logic.Model
 {
@@ -40,5 +41,6 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
         
         public ExtractStrategy DefaultExtractStrategy { get; set; }
         public SqlBuildStrategy DefaultSqlBuildStrategy { get; set; }
+        public ResultingScriptOptions ResultingScriptOptions { get; set; }
     }
 }

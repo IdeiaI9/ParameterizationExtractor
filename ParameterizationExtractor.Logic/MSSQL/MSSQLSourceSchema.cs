@@ -6,14 +6,15 @@ using System.Threading.Tasks;
 using System.Data.SqlClient;
 using System.Data;
 using System.Threading;
-using System.ComponentModel.Composition;
 using Quipu.ParameterizationExtractor.Logic.Interfaces;
 using Quipu.ParameterizationExtractor.Logic.Model;
 using Quipu.ParameterizationExtractor.Common;
+using Quipu.ParameterizationExtractor.Logic.Helpers;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace Quipu.ParameterizationExtractor.Logic.MSSQL
 {
-    [Export(typeof(ISourceSchema))]
     public class MSSQLSourceSchema : ISourceSchema
     {        
         public static string sqlPKColumns = @"
@@ -75,11 +76,10 @@ and C.is_computed = 0
         private IEnumerable<PTableMetadata> _tables;
         private IUnitOfWorkFactory _uowFactory;
         private IExtractConfiguration _globalConfiguration;
-        private ILog _log;
+        private ILogger _log;
         private IObjectMetaDataProvider _objectMetaDataProvider;
-
-        [ImportingConstructor]
-        public MSSQLSourceSchema(IUnitOfWorkFactory uowf, IExtractConfiguration globalConfiguration, ILog log, IObjectMetaDataProvider objectMetaDataProvider)
+        
+        public MSSQLSourceSchema(IUnitOfWorkFactory uowf, IExtractConfiguration globalConfiguration, ILogger<MSSQLSourceSchema> log, IObjectMetaDataProvider objectMetaDataProvider)
         {
             Affirm.ArgumentNotNull(uowf, "uowf");
             Affirm.ArgumentNotNull(log, "log");
@@ -152,34 +152,34 @@ and C.is_computed = 0
         public PTableMetadata GetTableMetaData(string tableName)
         {
             CheckInit();
-            return Tables.First(_ => _.TableName == tableName);
+            return Tables.First(_ => _.TableName.Equals(tableName, StringComparison.InvariantCultureIgnoreCase));
         }
 
         public async Task Init(CancellationToken cancellationToken)
         {
-            _log.Debug("MS SQL source schema init.");
-            var sourceInfo = Task.Run<Tuple<string, string>>(() => {
-                using (var uow = _uowFactory.GetUnitOfWork())
-                {
-                    return new Tuple<string, string>(uow.Database, uow.DataSource);
-                }
-            });
+            _log.InfoFormat("MS SQL source schema init.");
+            Tuple<string,string> sourceInfo;
 
-            _log.DebugFormat("Connected to {0}\\{1}", sourceInfo.Result.Item2, sourceInfo.Result.Item1);
+            using (var uow = _uowFactory.GetUnitOfWork())
+            {
+                sourceInfo = new Tuple<string, string>(uow.Database, uow.DataSource);
+            }
+            
+            _log.InfoFormat("Connected to Server: '{0}'; DataBase: '{1}'", sourceInfo.Item2, sourceInfo.Item1);
 
-            _log.Debug("Getting metadata...");
+            _log.InfoFormat("Getting metadata...");
             var dTables = _objectMetaDataProvider.GetDependentTables(cancellationToken);          
             var MetaData = GetMetaData(new MetaDataInitializer(), cancellationToken);
-            await Task.WhenAll(dTables, MetaData, sourceInfo);
+            await Task.WhenAll(dTables, MetaData);
 
-            _log.Debug("Done");
+            _log.InfoFormat("Done");
             _log.DebugFormat("FKs: {0}", dTables.Result.Count());
             _log.DebugFormat("Tables: {0}", MetaData.Result.Count());
 
             _dependentTables = dTables.Result;
             _tables = MetaData.Result;
-            _database = sourceInfo.Result.Item1;
-            _dataSource = sourceInfo.Result.Item2;
+            _database = sourceInfo.Item1;
+            _dataSource = sourceInfo.Item2;
 
             WasInit = true;
         }        
@@ -205,7 +205,7 @@ and C.is_computed = 0
                 {
                     var pTab = new PTableMetadata() { TableName = t["table_name"].ToString() };
 
-                    foreach (DataRow c in iList.Where(_ => _["TableName"].ToString() == pTab.TableName
+                    foreach (DataRow c in iList.Where(_ => _["TableName"].ToString().Equals(pTab.TableName, StringComparison.InvariantCultureIgnoreCase)
                                                             && !_globalConfiguration.FieldsToExclude.Any(f => f == _["ColumnName"].ToString())))
                     {
                         var field = initializer.InitTableMetaData(c);
@@ -214,7 +214,23 @@ and C.is_computed = 0
 
                     }
 
-                    var uqCol = _globalConfiguration.UniqueColums.FirstOrDefault(_ => _.TableName == pTab.TableName);
+                    var uqCol =  _globalConfiguration
+                                .UniqueColums
+                                .Where(_=> !ConfigHelper.IsRegExp(_.TableName))
+                                .FirstOrDefault(_ => _.TableName.Equals(pTab.TableName, StringComparison.InvariantCultureIgnoreCase));
+
+                    if (uqCol == null) // if no configuration for concrete table name, let's try to check RegExp 
+                    {
+                        var uqCols = _globalConfiguration
+                                    .UniqueColums
+                                    .Where(_ => ConfigHelper.IsRegExp(_.TableName))
+                                    .Where(_ => Regex.IsMatch(pTab.TableName, ConfigHelper.ExtractPattern(_.TableName)));
+
+                        if (uqCols.Count() > 1)
+                            throw new InvalidOperationException($"For table {pTab.TableName} ExtractConfig contains more than one RegExp rules for unique columns");
+
+                        uqCol = uqCols.FirstOrDefault();
+                    }
 
                     if (uqCol != null)
                         pTab.UniqueColumnsCollection = new List<string>(uqCol.UniqueColumns);
@@ -225,5 +241,6 @@ and C.is_computed = 0
 
             return result;
         }
+       
     }
 }

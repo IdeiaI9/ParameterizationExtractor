@@ -16,7 +16,12 @@ namespace Quipu.ParameterizationExtractor.Logic.Interfaces
         bool WasInit { get; }
         Task Init(CancellationToken cancellationToken);
         string Database { get; }
-        string DataSource { get; }
+        string DataSource { get; }       
+    }
+
+    public interface IConnectionStringResolver
+    {
+        string GetConnectionString(string serverName, string dbName);
     }
 
     public interface IObjectMetaDataProvider

@@ -9,7 +9,7 @@ using System.Xml.Serialization;
 
 namespace Quipu.ParameterizationExtractor.Logic.Configs
 {
-    public class SourceForScript : ISourceForScript
+    public class SourceForScript : ISourceForScript, IAmDSLFriendly
     {                    
         public SourceForScript()
         {
@@ -22,7 +22,7 @@ namespace Quipu.ParameterizationExtractor.Logic.Configs
 
         [XmlAttribute()]
         public string ScriptName { get; set; }
-
+         
         public List<RecordsToExtract> RootRecords { get; set; }
         [XmlIgnore]
         IList<RecordsToExtract> ISourceForScript.RootRecords
@@ -47,6 +47,22 @@ namespace Quipu.ParameterizationExtractor.Logic.Configs
         public string Comments
         {
             get; set;
+        }
+
+        public string AsString()
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine($"for script \"{ScriptName}\" take");
+
+            foreach (var r in RootRecords)
+                builder.AppendLine(r.AsString());
+
+            builder.AppendLine("consider");
+
+            foreach (var t in TablesToProcess)
+                builder.AppendLine(t.AsString());
+
+            return builder.ToString();
         }
     }
 }

@@ -9,11 +9,10 @@ using Quipu.ParameterizationExtractor.Common;
 using System.Threading;
 using Quipu.ParameterizationExtractor.Logic.MSSQL;
 using System.Data;
-using System.ComponentModel.Composition;
+using Microsoft.Extensions.Logging;
 
 namespace ParameterizationExtractor.Logic.MSSQL
 {   
-    [Export(typeof(IObjectMetaDataProvider))]
     public class ObjectMetaDataProvider : IObjectMetaDataProvider
     {
         public static string sqlFKs = @"        
@@ -35,10 +34,9 @@ INNER JOIN
 
         private IUnitOfWorkFactory _uowFactory;
         private IMetaDataInitializer _initializer;
-        private ILog _log;
+        private ILogger _log;
 
-        [ImportingConstructor]
-        public ObjectMetaDataProvider(IUnitOfWorkFactory uowf, ILog log, IMetaDataInitializer initializer)
+        public ObjectMetaDataProvider(IUnitOfWorkFactory uowf, ILogger<ObjectMetaDataProvider> log, IMetaDataInitializer initializer)
         {
             Affirm.ArgumentNotNull(uowf, "uowf");
             Affirm.ArgumentNotNull(log, "log");

@@ -11,7 +11,10 @@ namespace Quipu.ParameterizationExtractor.Logic.Helpers
     {
         public static IEnumerable<PField> NotIdentityFields(PRecord table)
         {
-            return table.Where(_ => !_.MetaData.IsIdentity);
+            // all not identity fields filtered by SqlBuildStrategy.FieldsToExclude
+            return table.Where(_ => !_.MetaData.IsIdentity 
+                                                && table.SqlBuildStrategy.FieldsToExclude.All(__ => !__.Equals(_.FieldName, StringComparison.InvariantCultureIgnoreCase))
+                                );
         }
 
         public static IEnumerable<PField> InjectSqlVariable(IEnumerable<PField> fields, string sqlVar, string fieldName)
@@ -26,6 +29,11 @@ namespace Quipu.ParameterizationExtractor.Logic.Helpers
 
         public static IEnumerable<PField> PrepareFieldsForChild(PRecord child, string sqlVar, PDependentTable fk)
         {
+            if (child.SqlBuildStrategy.IdentityInsert
+                && child.TableName.Equals(fk.ParentTable, StringComparison.InvariantCultureIgnoreCase)
+                && child.TableName.Equals(fk.ReferencedTable, StringComparison.InvariantCultureIgnoreCase))
+                return child; // if reference on itself and identity insert, no sense to inject sql var which is not yet initialized. and we know the value
+
             return InjectSqlVariable(NotIdentityFields(child), sqlVar, child.TableName == fk.ParentTable ? fk.ParentColumn : fk.ReferencedColumn);
         }
 
@@ -39,7 +47,7 @@ namespace Quipu.ParameterizationExtractor.Logic.Helpers
 
         public static string GetNameValueString(IEnumerable<PField> fields)
         {
-            return GetSeparatedNameValueString(fields, " and ", _ => _.ValueToSqlString());
+            return GetSeparatedNameValueString(fields, " and ", _ => _.ValueToSqlString()).Replace("= null", "is null");
             //return string.Join(" and ", fields.Select(_ => string.Format("[{0}] = {1}", _.FieldName, _.ValueToSqlString())));
         }
 
@@ -49,7 +57,7 @@ namespace Quipu.ParameterizationExtractor.Logic.Helpers
         }
         public static string GetNameNormalValueString(IEnumerable<PField> fields)
         {
-            return GetSeparatedNameValueString(fields, " ", _ => _.Value.ToString());
+            return GetSeparatedNameValueString(fields, " ", _ => PField.PrepareValueForScript(_.Value.ToString()));
             //return string.Join(" ", fields.Select(_ => string.Format("[{0}] = {1}", _.FieldName, _.Value)));
         }
 

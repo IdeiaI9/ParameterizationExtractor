@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Quipu.ParameterizationExtractor.Model;
 using Quipu.ParameterizationExtractor.Templates;
-using System.ComponentModel.Composition;
+using System.Composition;
 
 namespace Quipu.ParameterizationExtractor.MSSQL
 {

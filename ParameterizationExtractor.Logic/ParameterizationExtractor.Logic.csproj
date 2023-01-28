@@ -1,107 +1,52 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{86ACD68B-CCA0-4FA8-A15E-51CE122544A9}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ParameterizationExtractor.Logic</RootNamespace>
-    <AssemblyName>ParameterizationExtractor.Logic</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <SccProjectName>SAK</SccProjectName>
-    <SccLocalPath>SAK</SccLocalPath>
-    <SccAuxPath>SAK</SccAuxPath>
-    <SccProvider>SAK</SccProvider>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Quipu.ParameterizationExtractor.Logic</RootNamespace>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.ComponentModel.Composition" />
-    <Reference Include="System.ComponentModel.Composition.registration" />
-    <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="System.configuration" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
+    <Folder Include="Configs\" />
+    <Folder Include="Helpers\" />
+    <Folder Include="Interfaces\" />
+    <Folder Include="Properties\" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="Configs\Package.cs" />
-    <Compile Include="Configs\SourceForScript.cs" />
-    <Compile Include="Helpers\SqlHelper.cs" />
-    <Compile Include="Interfaces\ICanSerializeConfigs.cs" />
-    <Compile Include="Interfaces\IDependencyBuilder.cs" />
-    <Compile Include="Interfaces\IFileService.cs" />
-    <Compile Include="Interfaces\ILog.cs" />
-    <Compile Include="Interfaces\IMetaDataInitializer.cs" />
-    <Compile Include="Interfaces\IPackage.cs" />
-    <Compile Include="Interfaces\ISourceForScript.cs" />
-    <Compile Include="Interfaces\ISourceSchema.cs" />
-    <Compile Include="Interfaces\ISqlBuilder.cs" />
-    <Compile Include="Interfaces\IUnitOfWork.cs" />
-    <Compile Include="Model\ExtractStrategy.cs" />
-    <Compile Include="Model\GlobalExtractConfiguration.cs" />
-    <Compile Include="Model\PMetadata.cs" />
-    <Compile Include="Model\PTable.cs" />
-    <Compile Include="Model\RootRecord.cs" />
-    <Compile Include="Model\SqlBuildStrategy.cs" />
-    <Compile Include="Model\UniqueColumnsCollection.cs" />
-    <Compile Include="MSSQL\DependencyBuilder.cs" />
-    <Compile Include="MSSQL\MetaDataInitializer.cs" />
-    <Compile Include="MSSQL\MSSqlBuilder.cs" />
-    <Compile Include="MSSQL\MSSQLSourceSchema.cs" />
-    <Compile Include="MSSQL\ObjectMetaDataProvider.cs" />
-    <Compile Include="MSSQL\UnitOfWork.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Templates\DefaultTemplate.cs">
-      <DependentUpon>DefaultTemplate.tt</DependentUpon>
-      <AutoGen>True</AutoGen>
+    <None Include="Templates\DefaultTemplate.cs">
       <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>DefaultTemplate.tt</DependentUpon>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.0" />
+    <PackageReference Include="System.CodeDom" Version="4.7.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ParameterizationExtractor.Common\ParameterizationExtractor.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Templates\DefaultTemplate.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>DefaultTemplate.tt</DependentUpon>
     </Compile>
   </ItemGroup>
+
   <ItemGroup>
-    <Content Include="Templates\DefaultTemplate.tt">
+    <None Update="Templates\DefaultTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
       <LastGenOutput>DefaultTemplate.cs</LastGenOutput>
-    </Content>
+    </None>
   </ItemGroup>
-  <ItemGroup>
-    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\ParameterizationExtractor.Common\ParameterizationExtractor.Common.csproj">
-      <Project>{75838696-C44F-4A2D-ADFA-F6E5D518581A}</Project>
-      <Name>ParameterizationExtractor.Common</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

@@ -1,4 +1,5 @@
 ﻿using Quipu.ParameterizationExtractor.Common;
+using Quipu.ParameterizationExtractor.Logic.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ using System.Xml.Serialization;
 
 namespace Quipu.ParameterizationExtractor.Logic.Model
 {
-    public class TableToExtract
+    public class TableToExtract : IAmDSLFriendly
     {
         public TableToExtract() { }
         public TableToExtract(string tableName, ExtractStrategy extractStrategy) : this(tableName, extractStrategy, new SqlBuildStrategy())
@@ -38,9 +39,18 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
 
         public ExtractStrategy ExtractStrategy { get; set; }
         public SqlBuildStrategy SqlBuildStrategy { get; set; }
+
+        public string AsString()
+        {
+            var s = string.Empty;
+            if (UniqueColumns.Any())
+                s = $"and UniqueColumns \"{string.Join(",", UniqueColumns?.ToArray())}\" ";
+
+            return $"  {ExtractStrategy?.AsString()} for \"{TableName}\" {s} {SqlBuildStrategy?.AsString()}";
+        }
     }
 
-    public class RecordsToExtract 
+    public class RecordsToExtract : IAmDSLFriendly
     {
         public RecordsToExtract() { }
         public RecordsToExtract(string tableName, string where)
@@ -56,5 +66,7 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
         public string Where { get; set; }
         [XmlAttribute()]
         public int ProcessingOrder { get; set; }
+
+        public string AsString() => $" from \"{TableName}\" where \"{Where}\" ";
     }
 }

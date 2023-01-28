@@ -1,12 +1,16 @@
 ﻿using Fclp;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using ParameterizationExtractor.Logic.MSSQL;
 using Quipu.ParameterizationExtractor.Common;
 using Quipu.ParameterizationExtractor.Configs;
+using Quipu.ParameterizationExtractor.DSL.Connector;
 using Quipu.ParameterizationExtractor.Logic.Interfaces;
+using Quipu.ParameterizationExtractor.Logic.MSSQL;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Composition;
-using System.ComponentModel.Composition.Hosting;
-using System.ComponentModel.Composition.Primitives;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -19,15 +23,17 @@ namespace Quipu.ParameterizationExtractor
     {
         public AppArgs()
         {
-           
+
         }
 
-        public string ConnectionString { get; set; }
-        public string PathToPackage { get; set;  }
+        public string DBName { get; set; }
+        public string ServerName { get; set; }
+        public string PathToPackage { get; set; }
         public string ConnectionName { get; set; }
         public string OutputFolder { get; set; }
+        public bool Interactive { get; set; }
 
-        public static IAppArgs GetAppArgs()
+        public static IAppArgs GetAppArgs(string[] args)
         {
             var p = new FluentCommandLineParser<AppArgs>();
 
@@ -37,54 +43,78 @@ namespace Quipu.ParameterizationExtractor
 
             p.Setup<string>(_ => _.PathToPackage)
                 .As('p', "package")
-                .WithDescription("Path extraction package")
+                .WithDescription("Path to package")
                 .Required();
 
-            p.Setup<string>(_ => _.ConnectionString)
-                .As('c', "connectionString");
+            p.Setup<string>(_ => _.DBName)
+                .As('d', "database");
+
+            p.Setup<string>(_ => _.ServerName)
+                .As('s', "serverName");
 
             p.Setup<string>(_ => _.OutputFolder)
                 .As('o', "outputFolder")
                 .SetDefault("Output");
 
-            p.Parse(Environment.GetCommandLineArgs());
+            p.Setup<bool>(_ => _.Interactive)
+                .As('i', "Interactive")
+                .SetDefault(false);            
+
+            p.Parse(args);
+
+            if (string.IsNullOrEmpty(p.Object.ServerName) && !string.IsNullOrEmpty(p.Object.DBName))
+                throw new Exception("Please specify DBName!");
+
+            if (string.IsNullOrEmpty(p.Object.DBName) && !string.IsNullOrEmpty(p.Object.ServerName))
+                throw new Exception("Please specify ServerName!");
 
             return p.Object;
         }
     }
 
+    public static class AppBootstrap
+    {
+        public static IAppBuilder CreateAppBuilder(string[] args)
+        {
+            var a = AppArgs.GetAppArgs(args);
+            var ser = new ConfigSerializer(new FparsecConnector());
+
+            return new AppBuilder(a).ConfigureServices(_ =>_
+                                                            .AddSingleton<IFileService, FileService>()
+                                                            .AddSingleton<IExtractConfiguration>(ser.GetGlobalConfig())
+                                                            .AddSingleton<ICanSerializeConfigs, ConfigSerializer>()
+                                                            .AddSingleton<PackageProcessor>()
+                                                            .AddSingleton<IDSLConnector, FparsecConnector>()
+                                                            ); 
+        }
+    }
+
     public static class DI
     {
-        private readonly static Lazy<CompositionContainer> _container = new Lazy<CompositionContainer>(() => GetConfiguredContainer());
-        private static CompositionContainer GetConfiguredContainer()
+
+        public static IAppBuilder AddExecutor(this IAppBuilder appBuilder)
         {
-            var catalog = new AggregateCatalog(new AssemblyCatalog(typeof(AppArgs).Assembly), new AssemblyCatalog(typeof(IUnitOfWork).Assembly));
-            var container = new CompositionContainer(catalog, true); // thread safe ha!
-            var batch = new CompositionBatch();
-            var ser = new ConfigSerializer();
+            return appBuilder.ConfigureServices((services, args) =>
+            {
+                if (args.Interactive)
+                    services.AddSingleton<IExecutor, DSLExecutor>();
+                else
+                    services.AddSingleton<IExecutor, FromFileExecutor>();
+            });                       
+        }
 
-            batch.AddExportedValue<IAppArgs>(AppArgs.GetAppArgs());
-            batch.AddExportedValue<ICanSerializeConfigs>(ser);
-            batch.AddExportedValue<IExtractConfiguration>(ser.GetGlobalConfig());
-            batch.AddExportedValue<ILog>(new ConsoleLogger());
-            batch.AddExportedValue<IFileService>(new FileService());
-            
-            container.Compose(batch);
-
-            return container;
+        public static IAppBuilder AddMSSQL(this IAppBuilder appBuilder)
+        {
+            return appBuilder.ConfigureServices(_ => _.AddTransient<ISqlBuilder, MSSqlBuilder>() //must be transient, MSSqlBuilder is no thread safe
+                                                     .AddSingleton<ISourceSchema, MSSQLSourceSchema>()
+                                                     .AddSingleton<IObjectMetaDataProvider, ObjectMetaDataProvider>()
+                                                     .AddSingleton<IUnitOfWorkFactory, UnitOfWorkFactory>()
+                                                     .AddTransient<IDependencyBuilder, DependencyBuilder>() //must be transient, DependencyBuilder is no thread safe
+                                                     .AddTransient<IMetaDataInitializer, MetaDataInitializer>()
+                                                     .AddSingleton<IConnectionStringResolver, ConnectionStringResolver>()
+                                                );
         }
        
-        private static CompositionContainer Container { get { return _container.Value; } }
-
-        public static T GetInstance<T>()
-        {
-            return Container.GetExportedValue<T>();
-        }
-
-        public static T GetInstance<T>(string key)
-        {
-            return Container.GetExportedValue<T>(key);
-        }
     }
    
 }

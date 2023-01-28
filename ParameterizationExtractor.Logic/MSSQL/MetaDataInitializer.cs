@@ -4,18 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data;
-using System.ComponentModel.Composition;
 using Quipu.ParameterizationExtractor.Logic.Interfaces;
 using Quipu.ParameterizationExtractor.Logic.Model;
 
 namespace Quipu.ParameterizationExtractor.Logic.MSSQL
 {
-    [Export(typeof(IMetaDataInitializer))]
     public class MetaDataInitializer : IMetaDataInitializer
     {
         private readonly Dictionary<string, Type> sqlToNetTypes = new Dictionary<string, Type>();
-
-        [ImportingConstructor]
+        
         public MetaDataInitializer()
         {
             sqlToNetTypes.Add("int", typeof(int));
@@ -26,11 +23,15 @@ namespace Quipu.ParameterizationExtractor.Logic.MSSQL
             sqlToNetTypes.Add("datetime", typeof(DateTime));
             sqlToNetTypes.Add("bit", typeof(bool));
             sqlToNetTypes.Add("numeric", typeof(float));
-
+            sqlToNetTypes.Add("decimal", typeof(decimal));
             sqlToNetTypes.Add("money", typeof(decimal));
+            sqlToNetTypes.Add("smallmoney", typeof(decimal));
             sqlToNetTypes.Add("smalldatetime", typeof(DateTime));
             sqlToNetTypes.Add("tinyint", typeof(Byte));
             sqlToNetTypes.Add("xml", typeof(string));
+            sqlToNetTypes.Add("ntext", typeof(string));
+            sqlToNetTypes.Add("time", typeof(TimeSpan));
+            sqlToNetTypes.Add("image", typeof(byte[]));
         }
 
         private Type GetNETType(string sqlType)

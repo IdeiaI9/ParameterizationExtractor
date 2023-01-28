@@ -9,6 +9,6 @@ namespace Quipu.ParameterizationExtractor.Logic.Interfaces
 {
     public interface ISqlBuilder
     {
-        string Build(IEnumerable<PRecord> tables, ISourceSchema schema);      
+        string Build(IEnumerable<PRecord> tables, ISourceSchema schema, ISourceForScript source);      
     }
 }

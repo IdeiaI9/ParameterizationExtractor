@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ParameterizationExtractor.Logic.Model;
 
 namespace Quipu.ParameterizationExtractor.Logic.Interfaces
 {
@@ -22,5 +23,6 @@ namespace Quipu.ParameterizationExtractor.Logic.Interfaces
         IList<UniqueColumnsCollection> UniqueColums { get; }
         ExtractStrategy DefaultExtractStrategy { get; }
         SqlBuildStrategy DefaultSqlBuildStrategy { get; }
+        ResultingScriptOptions ResultingScriptOptions { get; }
     }
 }

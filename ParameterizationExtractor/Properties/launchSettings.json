@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ParameterizationExtractor": {
+      "commandName": "Project",
+      "commandLineArgs": "-p 05_bptypecodes.xml -s dev4-kiev\\sql2012 -d CWN_ET_MFI"
+    }
+  }
+}

@@ -4,7 +4,6 @@ using Quipu.ParameterizationExtractor.Logic.Interfaces;
 using Quipu.ParameterizationExtractor.Logic.Model;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Composition;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,6 +15,14 @@ namespace Quipu.ParameterizationExtractor.Configs
     public class ConfigSerializer : ICanSerializeConfigs
     {
         private const string _pathToGlobalConfig = @"ExtractConfig.xml";
+        private readonly IDSLConnector _dslConnector;
+
+        public ConfigSerializer(IDSLConnector dslConnector)
+        {
+            Affirm.IsNotNull(dslConnector, "dslConnector");
+
+            _dslConnector = dslConnector; 
+        }
         public IExtractConfiguration GetGlobalConfig()
         {
             var serializer = new XmlSerializer(typeof(GlobalExtractConfiguration));
@@ -29,12 +36,28 @@ namespace Quipu.ParameterizationExtractor.Configs
 
         public IPackage GetPackage(string path)
         {
-            var serializer = new XmlSerializer(typeof(Package));
+            var fi = new FileInfo(path);
 
-            using (var reader = new StreamReader(path))
+            if (!fi.Exists)
+                throw new FileNotFoundException(path);
+
+            if (fi.Extension == ".xml")
             {
-                return (IPackage)serializer.Deserialize(reader);
+                var serializer = new XmlSerializer(typeof(Package));
+
+                using (var reader = new StreamReader(path))
+                {
+                    return (IPackage)serializer.Deserialize(reader);
+                }
             }
+            else if (fi.Extension == ".bc")
+            {
+                var text = File.ReadAllText(path);
+
+                return _dslConnector.Parse(text);
+            }
+
+            throw new NotSupportedException("files '*{0}' are not suported! ".FormIt(fi.Extension));
         }
 
         public string SerializePackage(IPackage pkg)

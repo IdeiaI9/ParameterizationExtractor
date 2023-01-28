@@ -8,7 +8,7 @@ using System.Xml.Serialization;
 
 namespace Quipu.ParameterizationExtractor.Logic.Configs
 {
-    public class Package : IPackage
+    public class Package : IPackage, IAmDSLFriendly
     {
         public Package()
         {
@@ -22,6 +22,17 @@ namespace Quipu.ParameterizationExtractor.Logic.Configs
             {
                 return Scripts.Select(_ => _ as ISourceForScript).ToList();
             }
+        }
+
+        public string AsString()
+        {
+            var retString = new StringBuilder();
+
+            foreach(IAmDSLFriendly s in Scripts.Where(_=> _ is IAmDSLFriendly))
+            {
+                retString.AppendLine(s.AsString());
+            }
+            return retString.ToString();
         }
     }
 }

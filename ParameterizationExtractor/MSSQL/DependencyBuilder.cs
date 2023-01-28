@@ -8,7 +8,7 @@ using Quipu.ParameterizationExtractor.Model;
 using Quipu.ParameterizationExtractor.Common;
 using ParameterizationExtractor;
 using System.Threading;
-using System.ComponentModel.Composition;
+using System.Composition;
 
 namespace Quipu.ParameterizationExtractor.MSSQL
 {

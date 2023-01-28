@@ -8,9 +8,11 @@ namespace Quipu.ParameterizationExtractor.Common
 {
     public interface IAppArgs
     {
-        string ConnectionString { get; set; }
+        string DBName { get; set; }
+        string ServerName { get; set; }
         string PathToPackage { get; set; }
         string ConnectionName { get; set; }
         string OutputFolder { get; set; }
+        bool Interactive { get; set; }
     }
 }

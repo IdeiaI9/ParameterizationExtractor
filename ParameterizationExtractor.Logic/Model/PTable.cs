@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -33,16 +34,21 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
                     Add(new PField(field) { FieldName = field.FieldName, Value = dataRow[field.FieldName] });
             }
 
-            PkField = (from f in _metaData
-                       join v in this
-                             on f.FieldName equals v.FieldName
-                       where f.IsPK
-                       select v
-                  ).FirstOrDefault();
+            PkFields = (from f in _metaData
+                        join v in this
+                              on f.FieldName equals v.FieldName
+                        where f.IsPK
+                        select v
+                  ).ToList();
+
+            PkField = PkFields.FirstOrDefault();
+
+            if (PkField == null)
+                throw new Exception($"{TableName} does not have PK!");
 
             UniqueFields = (from f in this
                             join v in _metaData.UniqueColumnsCollection
-                                  on f.FieldName equals v
+                                  on f.FieldName.ToLowerInvariant() equals v.ToLowerInvariant()
                             select f).ToList();
     
             _parents = new List<PTableDependency>();
@@ -57,7 +63,9 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
         public IList<PTableDependency> Parents { get { return _parents; } }
         public IList<PField> UniqueFields { get; private set; }
         public string PK { get { return PkField?.Value.ToString(); } }
+        public bool IsCompositePK { get => PkFields.Count() > 1; }
         public PField PkField { get; private set; }
+        public IEnumerable<PField> PkFields { get; private set; }
         public bool IsStartingPoint { get; set; }
         public string TableName { get { return _metaData.TableName; } }
         public PTableMetadata MetaData { get { return _metaData; } }
@@ -78,7 +86,7 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
 
         public override string ToString()
         {
-            return string.Format("{0} {1}",TableName,PK);
+            return string.Format("{0} {1}", TableName, string.Concat(PkFields.Select(_ => _.Value?.ToString())));
         }        
 
         public IEnumerable<PField> GetUniqueFields()
@@ -87,8 +95,8 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
             if (UniqueFields != null
                 && UniqueFields.Any())
                 list.AddRange(UniqueFields);
-            else if (PkField != null)
-                list.Add(PkField);
+            else if (PkFields != null)
+                list.AddRange(PkFields);
 
             return list;
         }
@@ -107,16 +115,35 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
             return s;
         }
 
+        private string GetHashFromString(string s)
+        {
+            using (SHA256 shaM = new SHA256Managed())
+            {
+                var data = Encoding.UTF8.GetBytes(s);
+                var hash = shaM.ComputeHash(data);
+                var hashstr = BitConverter.ToString(hash).Replace("-", string.Empty);
+
+                return hashstr;
+            }
+        }
+
         private static Regex varRgx = new Regex("(?:[^a-z0-9@]|(?<=['\"])s)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
         public string GetPKVarName()
         {
-            var nm = string.Format("@{0}_{1}_{2}", TableName, PkField?.FieldName, PK);
+            var nm = string.Format("@{0}_{1}", TableName, string.Concat(PkFields.Select(_ => $"{_.FieldName}_{_.Value}")));
             nm = nm.Replace("-", "Ngt");
+            nm = nm.Replace(".", "Point");
+            nm = nm.Replace("_", "Un");
+            nm = varRgx.Replace(nm, string.Empty);
+            if (nm.Length > 120)
+            {
+                nm = $"@{GetHashFromString(nm)}";
+            }
 
-            return varRgx.Replace(nm, string.Empty);
+            return nm;
         }
 
-        public bool IsNumericPK { get { return PkField == null ? false : PkField.MetaData.FieldType.IsNumericType(); } }
+        public bool IsNumericPK { get { return PkField == null || PkFields.Count() > 1 ? false : PkField.MetaData.FieldType.IsNumericType(); } }
         public bool IsIdentityPK { get { return PkField == null ? false : PkField.MetaData.IsIdentity; } }
 
         public IEnumerable<PField> GetAllFKs()
@@ -165,10 +192,10 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
                 }
                 else
                 {
-                    if (!MetaData.IsNullable)
-                        return "''";
-                    else
+                    if (MetaData.IsNullable && Value == null)
                         return "null";
+                    else
+                        return "''";
                 }
             }
             else if (_metaData.FieldType == typeof(bool))
@@ -178,16 +205,25 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
             else if (_metaData.FieldType == typeof(DateTime))
             {
                 var date = Convert.ToDateTime(Value);
-
                 return string.Format("'{0}'", date.ToString("yyyy-MM-dd HH:mm:ss.fff"));
             }
+            else if (_metaData.FieldType == typeof(TimeSpan))
+            {
+                var date = DateTime.MinValue;
+                var ts = (TimeSpan)Value;
+                return string.Format("'{0}'", date.Add(ts).ToString("HH:mm:ss.fff"));
+            }
             else if (_metaData.FieldType == typeof(decimal)
-                || _metaData.FieldType == typeof(Double)
-                 || _metaData.FieldType == typeof(Single))
+                     || _metaData.FieldType == typeof(Double)
+                     || _metaData.FieldType == typeof(Single))
             {
                 var num = Convert.ToString(Value, System.Globalization.CultureInfo.InvariantCulture);
 
                 return num;
+            } if (_metaData.FieldType == typeof(byte[]))
+             {
+                //return $"'{PrepareValueForScript(Encoding.UTF8.GetString(Value as byte[]))}";
+                return "''"; // TODO 
             }
             else
                 str = PrepareValueForScript(Value.ToString());
@@ -195,7 +231,7 @@ namespace Quipu.ParameterizationExtractor.Logic.Model
             return str;
         }        
 
-        private string PrepareValueForScript(string value)
+        public static string PrepareValueForScript(string value)
         {
             return value.Replace("'", "''");
         }

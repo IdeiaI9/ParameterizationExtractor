@@ -2,7 +2,7 @@
 using Quipu.ParameterizationExtractor.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Composition;
+using System.Composition;
 using System.Configuration;
 using System.Linq;
 using System.Text;
