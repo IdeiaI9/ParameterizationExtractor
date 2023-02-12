@@ -67,9 +67,9 @@ consider
 
             var t = parser.Parse(testString2Froms);
             Assert.IsTrue(t.Scripts.First().TablesToProcess.Count == 3);
-            Assert.IsTrue(t.Scripts.First().RootRecords.First(_ => _.TableName == "Departments").ProcessingOrder == 2);
+            Assert.IsTrue(t.Scripts.First().RootRecords.First(_ => _.TableName == "Departments").ProcessingOrder == 1);
 
-            Assert.IsTrue(t.Scripts.First().TablesToProcess.First().ExtractStrategy.DependencyToExclude.Count == 3);
+            Assert.IsTrue(t.Scripts.First().TablesToProcess.First(_=>_.TableName == "DepartmentStructure").ExtractStrategy.DependencyToExclude.Count == 2);
             Assert.IsTrue(t.Scripts.First().TablesToProcess.Last().ExtractStrategy.DependencyToExclude.Count == 0);
 
         }
@@ -81,7 +81,7 @@ consider
         [Test]
         public void TestInternalCommand()
         {
-            var s = InternalCommandParser.parse(testString4Command2);
+            var s = InternalCommandParser.parse(testString4Command1);
 
             var t = s as CommandOK;
 

@@ -19,4 +19,8 @@
     <ProjectReference Include="..\ParameterizationExtractor.Logic\ParameterizationExtractor.Logic.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
 </Project>
